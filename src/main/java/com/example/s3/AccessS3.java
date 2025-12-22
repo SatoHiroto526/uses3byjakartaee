@@ -139,7 +139,7 @@ public class AccessS3 {
 
 
     // ダウンロード
-    public void s3FileDownload(String bucket, String filename, OutputStream targetFile) {
+    public InputStream s3FileDownload(String bucket, String filename) {
 
         // 引数のfilename（フルパス）をプレフィックスとファイル名に分解
         // 文字列の中で最後に出現する「/」の位置を取得
@@ -154,6 +154,7 @@ public class AccessS3 {
         // ファイルの存在チェック
         if (list.size() == 0) {
             logger.warning("W:s3://" + bucket + DELIMITER + prefix + "配下にオブジェクトが存在しません。");
+            return null;
         }
         logger.info("I:s3://" + bucket + DELIMITER + prefix + "配下にオブジェクトの存在を確認しました。");
 
@@ -171,6 +172,7 @@ public class AccessS3 {
 
         if (!targetFileExistsFlag) {
             logger.warning("W:s3://" + bucket + DELIMITER + prefix + "配下に対象ファイルが存在しません。");
+            return null;
         }
 
         // GetObjectRequest作成
@@ -180,17 +182,19 @@ public class AccessS3 {
                                                 .build();
 
         // S3ファイルをInputStreamでダウンロード
-        try(ResponseInputStream<GetObjectResponse> s3Object = s3client.getObject(request)) {
+        try{
+            ResponseInputStream<GetObjectResponse> s3Object = s3client.getObject(request); 
             if (s3Object == null) {
                 logger.warning("W:s3://" + bucket + DELIMITER + filename + "のダウンロードに失敗しました。");
             }
 
-            s3Object.transferTo(targetFile);
             logger.info("I:S3ファイルダウンロード処理を正常終了します。");
+            return s3Object;
 
         } catch(Exception e) {
             logger.warning("W:S3ファイルダウンロード処理で異常終了しました。");
             logger.warning("詳細:" + e);
+            return null;
         }
     }
 

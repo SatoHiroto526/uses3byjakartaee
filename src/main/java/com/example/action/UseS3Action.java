@@ -26,9 +26,9 @@ import lombok.Setter;
 @Setter
 public class UseS3Action {
 
-    private String bucket = "";
+    private String bucket = "uses3byjakartaee";
 
-    private String prefix = "";
+    private String prefix = "com/example/";
 
     private String file;
 
@@ -63,10 +63,15 @@ public class UseS3Action {
                 "attachment; filename*=UTF-8''" + encodedFilename
             );
 
-            try (OutputStream out = ec.getResponseOutputStream()) {
+            try (InputStream in = s3.s3FileDownload(bucket, filename);
+                OutputStream out = ec.getResponseOutputStream()) {
 
-            s3.s3FileDownload(bucket, filename, out);
-            out.flush();
+                byte[] buffer = new byte[8192];
+                int bytesRead;
+                while ((bytesRead = in.read(buffer)) != -1) {
+                    out.write(buffer, 0, bytesRead);
+                }
+                out.flush();
             }
 
             FacesContext.getCurrentInstance().responseComplete();
