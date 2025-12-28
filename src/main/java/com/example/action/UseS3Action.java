@@ -26,9 +26,9 @@ import lombok.Setter;
 @Setter
 public class UseS3Action {
 
-    private String bucket = "";
+    private String bucket = "uses3byjakartaee";
 
-    private String prefix = "";
+    private String prefix = "com/example/";
 
     private String file;
 
