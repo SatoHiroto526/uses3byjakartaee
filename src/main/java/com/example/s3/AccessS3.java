@@ -1,27 +1,17 @@
 package com.example.s3;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.AwsCredentials;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import jakarta.inject.Inject;
 import software.amazon.awssdk.core.ResponseInputStream;
-import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.retries.StandardRetryStrategy;
-import software.amazon.awssdk.retries.api.RetryStrategy;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
@@ -34,104 +24,14 @@ import software.amazon.awssdk.services.s3.model.S3Object;
 public class AccessS3 {
 
     // S3クライアント
+    @Inject
     private S3Client s3client;
-
-    // S3認証情報
-    private String accessKyeId;
-    private String secretAccessKey;
-
-    // リージョン
-    private String region;
-
-    // 接続リトライ回数
-    private int retryNum;
-
-    // タイムアウト関連
-    // リトライ含む総タイムアウト時間
-    private int apiCallTimeout;
-    // 1回の通信のタイムアウト時間
-    private int apiCallAttemptTimeout;
-
-    // プロパティファイル
-    private final String s3PropertyFile =  "aws.properties";  
 
     // 区切り文字定義
     private final String DELIMITER = "/";
 
     // ロガー
     private static final Logger logger = Logger.getLogger(AccessS3.class.getName());
-
-    @PostConstruct
-    public void init() {
-        s3ClientBuilder();
-    }
-
-    // S3クライアントビルダー
-    private boolean s3ClientBuilder() {
-
-        boolean result = false;
-
-        // プロパティファイル読み込み
-        Properties properties = new Properties();
-        try(InputStream input = getClass().getClassLoader().getResourceAsStream(s3PropertyFile)) {
-            if (input == null){
-                logger.warning("W:プロパティファイルの読み込みに失敗しました。");
-                return result;
-            } else {
-                properties.load(input);
-
-                // プロパティ取得
-                this.accessKyeId =  properties.getProperty("aws.accessKyeId");
-                this.secretAccessKey =  properties.getProperty("aws.secretAccessKey");
-                this.region =  properties.getProperty("aws.region");
-                this.retryNum = Integer.parseInt(properties.getProperty("aws.retryNum"));
-                this.apiCallTimeout =  Integer.parseInt(properties.getProperty("aws.apiCallTimeout"));
-                this.apiCallAttemptTimeout = Integer.parseInt(properties.getProperty("aws.apiCallAttemptTimeout"));
-                logger.info("I:プロパティを取得しました。");
-
-            }
-        } catch (IOException e) {
-            logger.warning("W:プロパティファイルの読み込みで異常終了しました。");
-            logger.warning("詳細:" + e);
-            return result;
-        }
-
-        try {
-            // 認証情報セット
-            AwsCredentials credential = AwsBasicCredentials.create(accessKyeId, secretAccessKey);
-
-            // リトライ回数設定
-            RetryStrategy retryStrategy = StandardRetryStrategy.builder()
-                                                            .maxAttempts(1 + retryNum) // 総試行回数（初回 + リトライ3回）
-                                                            .build();
-
-            // ClientOverrideConfigurationオブジェクト生成
-            ClientOverrideConfiguration overrideConfig = ClientOverrideConfiguration.builder()
-                                                                                    .retryStrategy(retryStrategy) // リトライストラテージーを設定
-                                                                                    .apiCallTimeout(Duration.ofSeconds(apiCallTimeout)) // リトライ含む総タイムアウト時間
-                                                                                    .apiCallAttemptTimeout(Duration.ofSeconds(apiCallAttemptTimeout)) // 1回の通信のタイムアウト時間
-                                                                                    .build();
-
-            // S3クライアント生成
-            this.s3client = S3Client.builder()
-                                .region(Region.of(region))
-                                .credentialsProvider(StaticCredentialsProvider.create(credential))
-                                .overrideConfiguration(overrideConfig)
-                                .build();
-            result = true;
-            logger.info("I:S3クライアントを生成しました。");
-            return result;
-        } catch (SdkClientException e) {
-            logger.warning("W:S3クライアントの生成で異常終了しました。（SdkClientException）");
-            logger.warning("詳細:" + e);
-            return result;
-        } catch (Exception e) {
-            logger.warning("W:S3クライアントの生成で異常終了しました。（その他例外）");
-            logger.warning("詳細:" + e);
-            return result;
-        }
-
-    }
 
     // 一覧取得
     public List<String> getS3FileList(String bucket, String prefix) {
