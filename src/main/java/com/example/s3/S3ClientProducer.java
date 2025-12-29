@@ -80,6 +80,8 @@ public class S3ClientProducer {
             AwsCredentials credential = AwsBasicCredentials.create(accessKyeId, secretAccessKey);
 
             // リトライ回数設定
+            // RetryCondition（リトライ条件）とBackoffStrategy（バックオフポリシー）は非推奨クラスのため設定しない。
+            // StandardRetryStrategy + maxAttempts()で制御
             RetryStrategy retryStrategy = StandardRetryStrategy.builder()
                                                             .maxAttempts(1 + retryNum) // 総試行回数（初回 + リトライ3回）
                                                             .build();
